@@ -156,11 +156,22 @@ Private Sub CalcDisplaySizes( _
                 ByRef DisplayHeight As String, _
                 ByVal Cfg As Config _
             )
-    Dim Ratio As Double: Ratio = Shape.SizeWidth / Shape.SizeHeight
-    Dim RndWidth As Double: RndWidth = RndDouble(Cfg.MinWidth, Cfg.MaxWidth)
-    Dim Height As Double: Height = RndWidth / Ratio
-    DisplayWidth = ToStr(VBA.Round(RndWidth, 1), ".")
-    DisplayHeight = ToStr(VBA.Round(Height, 1), ".")
+    Dim LongestSide As Double, ShortestSide As Double
+    Dim LongestFirst As Boolean
+    If Shape.SizeWidth > Shape.SizeHeight Then
+        LongestSide = Shape.SizeWidth
+        ShortestSide = Shape.SizeHeight
+        LongestFirst = True
+    Else
+        LongestSide = Shape.SizeHeight
+        ShortestSide = Shape.SizeWidth
+    End If
+    Dim Ratio As Double: Ratio = LongestSide / ShortestSide
+    LongestSide = RndDouble(Cfg.MinWidth, Cfg.MaxWidth)
+    ShortestSide = LongestSide / Ratio
+    DisplayWidth = ToStr(VBA.Round(LongestSide, 1), ".")
+    DisplayHeight = ToStr(VBA.Round(ShortestSide, 1), ".")
+    If Not LongestFirst Then Swap DisplayWidth, DisplayHeight
 End Sub
 
 Private Property Get DisplayUnit(ByVal Cfg As Config) As String
