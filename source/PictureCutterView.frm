@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} PictureCutterView 
-   ClientHeight    =   4065
+   ClientHeight    =   9450.001
    ClientLeft      =   45
    ClientTop       =   390
    ClientWidth     =   6975
@@ -17,17 +17,25 @@ Option Explicit
 '===============================================================================
 ' # State
 
+Private Const MIN_SIZE As Double = 1
+
 Public IsOk As Boolean
 Public IsCancel As Boolean
 
 Public SourceFolder As FolderBrowserHandler
 Public OutputFolder As FolderBrowserHandler
-
 Public DivWidth As TextBoxHandler
 Public DivHeight As TextBoxHandler
-
 Public MinWidth As TextBoxHandler
 Public MaxWidth As TextBoxHandler
+
+Public ImagesQuantity As TextBoxHandler
+Public HTemplatesFolder As FolderBrowserHandler
+Public HWidth As TextBoxHandler
+Public VTemplatesFolder As FolderBrowserHandler
+Public VHeight As TextBoxHandler
+Public ETemplatesFolder As FolderBrowserHandler
+Public ESize As TextBoxHandler
 
 '===============================================================================
 ' # Constructor
@@ -44,9 +52,24 @@ Private Sub UserForm_Initialize()
     Set DivHeight = _
         TextBoxHandler.New_(DivHeightBox, TextBoxTypeLong, 1)
     Set MinWidth = _
-        TextBoxHandler.New_(MinWidthBox, TextBoxTypeDouble, 0.01)
+        TextBoxHandler.New_(MinWidthBox, TextBoxTypeDouble, MIN_SIZE)
     Set MaxWidth = _
-        TextBoxHandler.New_(MaxWidthBox, TextBoxTypeDouble, 0.01)
+        TextBoxHandler.New_(MaxWidthBox, TextBoxTypeDouble, MIN_SIZE)
+        
+    Set ImagesQuantity = _
+        TextBoxHandler.New_(ImagesQuantityBox, TextBoxTypeLong, 1)
+    Set HTemplatesFolder = _
+        FolderBrowserHandler.New_(HTemplatesFolderBox, HTemplatesFolderBrowse)
+    Set HWidth = _
+        TextBoxHandler.New_(HWidthBox, TextBoxTypeDouble, MIN_SIZE)
+    Set VTemplatesFolder = _
+        FolderBrowserHandler.New_(VTemplatesFolderBox, VTemplatesFolderBrowse)
+    Set VHeight = _
+        TextBoxHandler.New_(VHeightBox, TextBoxTypeDouble, MIN_SIZE)
+    Set ETemplatesFolder = _
+        FolderBrowserHandler.New_(ETemplatesFolderBox, ETemplatesFolderBrowse)
+    Set ESize = _
+        TextBoxHandler.New_(ESizeBox, TextBoxTypeDouble, MIN_SIZE)
 End Sub
 
 '===============================================================================

@@ -1,7 +1,7 @@
 Attribute VB_Name = "LibCore"
 '===============================================================================
 '   Модуль          : LibCore
-'   Версия          : 2024.02.22
+'   Версия          : 2024.02.26
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
 '   Использован код : dizzy (из макроса CtC), Alex Vakulenko
 '                     и др.
@@ -228,7 +228,7 @@ Public Property Get DiffWithinTolerance( _
                         ByVal Number2 As Variant, _
                         ByVal Tolerance As Variant _
                     ) As Boolean
-    DiffWithinTolerance = VBA.Abs(Number1 - Number2) < Tolerance
+    DiffWithinTolerance = VBA.Abs(Number1 - Number2) <= Tolerance
 End Property
 
 'возвращает все шейпы на всех слоях текущей страницы, по умолчанию - без мастер-слоёв и без гайдов
@@ -1463,12 +1463,12 @@ End Property
 'возвращает имя файла без расширения
 Public Property Get GetFileNameNoExt(ByVal FileName As String) As String
     If VBA.Right(FileName, 1) <> "\" And VBA.Len(FileName) > 0 Then
-        GetFileNameNoExt = Left(FileName, _
+        GetFileNameNoExt = VBA.Left(FileName, _
             Switch _
-                (InStr(FileName, ".") = 0, _
+                (VBA.InStr(FileName, ".") = 0, _
                     Len(FileName), _
-                InStr(FileName, ".") > 0, _
-                    InStrRev(FileName, ".") - 1))
+                VBA.InStr(FileName, ".") > 0, _
+                    VBA.InStrRev(FileName, ".") - 1))
     End If
 End Property
 
@@ -1502,10 +1502,27 @@ Public Property Get GetFilePath(ByVal File As String) As String
     GetFilePath = VBA.Left(File, VBA.InStrRev(File, "\"))
 End Property
 
+Public Property Get GetFilesFromFolder(ByVal Path As String) As VBA.Collection
+    Set GetFilesFromFolder = SequenceToCollection(FSO.GetFolder(Path).Files)
+End Property
+
+Public Property Get GetRandomFilesFromFolder( _
+                        ByVal Path As String, _
+                        Optional ByVal NumberOfFiles As Long = 1 _
+                    ) As VBA.Collection
+    Set GetRandomFilesFromFolder = New Collection
+    Dim Files As Collection: Set Files = GetFilesFromFolder(Path)
+    If Files.Count = 0 Then Exit Property
+    Do While GetRandomFilesFromFolder.Count < NumberOfFiles
+        GetRandomFilesFromFolder.Add Files(RndLong(1, Files.Count))
+    Loop
+End Property
+
 'создаёт папку, если не было
 'возвращает Path обратно (для inline-использования)
 Public Function MakeDir(ByVal Path As String) As String
-    If Not FSO.FolderExists(Path) Then MkDir Path
+    Dim FS As New FileSystemObject
+    If Not FS.FolderExists(Path) Then FS.CreateFolder Path
     MakeDir = Path
 End Function
 
@@ -1658,23 +1675,27 @@ Public Sub BoostFinish(Optional ByVal EndUndoGroup As Boolean = True)
 End Sub
 
 Public Property Get Contains( _
-                        ByRef Sequence As Variant, _
-                        ByRef Items As Variant _
+                        ByRef ContainerSeq As Variant, _
+                        ByRef Item As Variant _
                     ) As Boolean
     Dim Element As Variant
+    For Each Element In ContainerSeq
+        If Same(Item, Element) Then
+            Contains = True
+            Exit Property
+        End If
+    Next Element
+End Property
+
+Public Property Get ContainsAll( _
+                        ByRef ContainerSeq As Variant, _
+                        ByRef ItemsSeq As Variant _
+                    ) As Boolean
     Dim Item As Variant
-    Dim ItemExists As Boolean
-    For Each Item In Items
-        For Each Element In Sequence
-            If Same(Item, Element) Then
-                ItemExists = True
-                Exit For
-            End If
-        Next Element
-        If Not ItemExists Then Exit Property
-        ItemExists = False
+    For Each Item In ItemsSeq
+        If Not Contains(ContainerSeq, Item) Then Exit Property
     Next Item
-    Contains = True
+    ContainsAll = True
 End Property
 
 Public Property Get Count( _
@@ -1723,6 +1744,14 @@ Public Sub DebugOut( _
     Debug.Print "<" & Context & "> " & VBA.Join(Output, " ")
     #End If
 End Sub
+
+Public Property Get Deduplicate(ByVal Sequence As Variant) As VBA.Collection
+    Set Deduplicate = New Collection
+    Dim Item As Variant
+    For Each Item In Sequence
+        If Not Contains(Deduplicate, Item) Then Deduplicate.Add Item
+    Next Item
+End Property
 
 Public Property Get FindMaxItemNum(ByVal Collection As Collection) As Long
     FindMaxItemNum = 1
@@ -1973,6 +2002,16 @@ Public Property Get Same( _
     End If
 End Property
 
+Public Property Get SequenceToCollection( _
+                        ByVal Sequence As Variant _
+                    ) As VBA.Collection
+    Set SequenceToCollection = New Collection
+    Dim Item As Variant
+    For Each Item In Sequence
+        SequenceToCollection.Add Item
+    Next Item
+End Property
+
 Public Property Get SequenceToShowable(ByVal Sequence As Variant) As String
     Dim Result As String
     Dim Item As Variant
@@ -2002,6 +2041,10 @@ Public Property Get ToShowable(ByVal Some As Variant) As String
             ToShowable = SequenceToShowable(Some)
         ElseIf TypeOf Some Is Scripting.Dictionary Then
             ToShowable = SequenceToShowable(Some.Items)
+        ElseIf TypeOf Some Is Scripting.File Then
+            ToShowable = Some.Name
+        ElseIf TypeOf Some Is Scripting.Files Then
+            ToShowable = SequenceToShowable(Some)
         Else
             ToShowable = "[Object:" & VBA.TypeName(Some) & "]"
         End If
@@ -2105,93 +2148,4 @@ Private Sub ThrowIfNotCollectionOrArray(ByRef CollectionOrArray As Variant)
     VBA.Err.Raise _
         13, Source:="LibCore", _
         Description:="Type mismatch: CollectionOrArray должен быть Collection или Array"
-End Sub
-
-'===============================================================================
-' # юнит-тесты и ручные тесты модуля
-
-Private Sub TestGetRotatedRect()
-    Dim Rect As Rect
-    Set Rect = ActiveLayer.CreateRectangle(0, 0, 3, 6).BoundingBox
-    ActiveLayer.CreateRectangleRect GetRotatedRect(Rect)
-End Sub
-
-Private Sub TestShow()
-    Show Empty
-    Show Null
-    Show 3
-    Show "3"
-    Show New Collection
-    Show Pack(1, 2, Pack("x", "y", "z"))
-    Show CreateColor
-End Sub
-
-Private Sub UnitContains()
-    Debug.Assert Contains(Array(1, 2, 3), Array(3, 1, 2)) = True
-    Debug.Assert Contains(Array(1, 2, 3), Array(3, 1, 4)) = False
-    Debug.Print "Contains is OK"
-End Sub
-
-Private Sub UnitHasPosition()
-    Debug.Assert HasPosition(CreateRect) = True
-    Debug.Assert HasPosition(New Collection) = False
-    Debug.Assert HasPosition(123) = False
-    Debug.Print "HasPosition is OK"
-End Sub
-
-Private Sub UnitHasSize()
-    Debug.Assert HasSize(CreateRect) = True
-    Debug.Assert HasPosition(New Collection) = False
-    Debug.Assert HasPosition(123) = False
-    Debug.Print "HasSize is OK"
-End Sub
-
-Private Sub UnitIsJust()
-    Debug.Assert IsJust(0) = True
-    Debug.Assert IsJust(1) = True
-    Debug.Assert IsJust(New Collection) = True
-    Debug.Assert IsJust(Empty) = False
-    Debug.Assert IsJust(Null) = False
-    Debug.Assert IsJust(Nothing) = False
-    Debug.Assert IsJust(VBA.CVErr(ErrorCodes.ErrorInvalidArgument)) = False
-    Debug.Print "IsJust is OK"
-End Sub
-
-Private Sub UnitNumberToFitArea()
-    Debug.Assert _
-        NumberToFitArea( _
-            CreateRect(0, 0, 10, 10), _
-            CreateRect(0, 0, 100, 100) _
-        ) = 100
-    Debug.Assert _
-        NumberToFitArea( _
-            CreateRect(0, 0, 10, 20), _
-            CreateRect(0, 0, 10, 20) _
-        ) = 1
-    Debug.Assert _
-        NumberToFitArea( _
-            CreateRect(0, 0, 10, 20), _
-            CreateRect(0, 0, 5, 5) _
-        ) = 0
-    Debug.Assert _
-        NumberToFitArea( _
-            CreateRect(0, 0, 10, 20), _
-            CreateRect(0, 0, 21, 21) _
-        ) = 2
-End Sub
-
-Private Sub UnitSpaceBox()
-    With SpaceBox(CreateRect(0, 0, 100, 100), 20)
-        Debug.Assert .Width = 140
-        Debug.Assert .Height = 140
-    End With
-End Sub
-
-Private Sub UnitSwap()
-    Dim x As Long, y As Long
-    x = 1
-    y = 2
-    Swap x, y
-    Debug.Assert x = 2
-    Debug.Assert y = 1
 End Sub

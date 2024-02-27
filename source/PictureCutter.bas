@@ -1,7 +1,7 @@
 Attribute VB_Name = "PictureCutter"
 '===============================================================================
 '   Макрос          : PictureCutter
-'   Версия          : 2024.02.22
+'   Версия          : 2024.02.27
 '   Сайты           : https://vk.com/elvin_macro
 '                     https://github.com/elvin-nsk
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
@@ -14,7 +14,7 @@ Option Explicit
 
 Public Const APP_NAME As String = "PictureCutter"
 Public Const APP_DISPLAYNAME As String = APP_NAME
-Public Const APP_VERSION As String = "2024.02.22"
+Public Const APP_VERSION As String = "2024.02.27"
 
 '===============================================================================
 ' # Entry points
@@ -70,10 +70,7 @@ Private Sub ProcessImage( _
             )
     Dim Doc As Document: Set Doc = OpenDocument(File)
     Dim SourceShape As Shape: Set SourceShape = Doc.ActivePage.Shapes.First
-    Dim DisplayWidth As String, DisplayHeight As String
-    CalcDisplaySizes SourceShape, DisplayWidth, DisplayHeight, Cfg
-        
-    Dim Slices As Collection: Set Slices = SliceShape(SourceShape, Cfg)
+    Dim ImageSize As Size: Set ImageSize = RandomizeSize(SourceShape, Cfg)
     
     Dim FileNameCalc As FileSpec: Set FileNameCalc = FileSpec.New_(File)
     Dim SourceFileBaseName As String: SourceFileBaseName = FileNameCalc.BaseName
@@ -81,15 +78,20 @@ Private Sub ProcessImage( _
         .Path = Cfg.OutputFolder
         .Path = .Path & .BaseName
         .BaseName = _
-            .BaseName _
-          & "_" & DisplayWidth & "_x_" & DisplayHeight & "_" & DisplayUnit(Cfg)
+            .BaseName & "_" _
+          & ImageSize.DisplayWidth(1, ".") & "_x_" _
+          & ImageSize.DisplayHeight(1, ".") & "_" & DisplayUnit(Cfg)
         MakePath .Path
     End With
     FSO.CopyFile File, FileNameCalc
     
+    Dim Slices As Collection: Set Slices = SliceShape(SourceShape, Cfg)
     SaveSlices Slices, FileNameCalc.Path, SourceFileBaseName
     
     Doc.Close
+    
+    If Cfg.OptionImageOnRandomTemplate Then _
+        ExportOnTemplates File, ImageSize, FileNameCalc.Path, Cfg
 End Sub
 
 Private Function SliceShape( _
@@ -150,29 +152,150 @@ Private Sub SaveSlice( _
     Slice.Bitmap.SaveAs(File, cdrPNG).Finish
 End Sub
 
-Private Sub CalcDisplaySizes( _
-                ByVal Shape As Shape, _
-                ByRef DisplayWidth As String, _
-                ByRef DisplayHeight As String, _
+Private Sub ExportOnTemplates( _
+                ByVal ImageFile As String, _
+                ByVal ImageSize As Size, _
+                ByVal SavePath As String, _
                 ByVal Cfg As Config _
             )
-    Dim LongestSide As Double, ShortestSide As Double
-    Dim LongestFirst As Boolean
-    If Shape.SizeWidth > Shape.SizeHeight Then
-        LongestSide = Shape.SizeWidth
-        ShortestSide = Shape.SizeHeight
-        LongestFirst = True
+    If ImageSize.Landscape Then
+        ExportOnTemplatesSubset _
+            Deduplicate( _
+                GetRandomFilesFromFolder( _
+                    Cfg.HTemplatesFolder, Cfg.ImagesQuantity _
+                ) _
+            ), _
+            Cfg.HWidth, ImageFile, ImageSize, SavePath, Cfg
+    ElseIf ImageSize.Portrait Then
+        ExportOnTemplatesSubset _
+            Deduplicate( _
+                GetRandomFilesFromFolder( _
+                    Cfg.VTemplatesFolder, Cfg.ImagesQuantity _
+                ) _
+            ), _
+            Cfg.VHeight, ImageFile, ImageSize, SavePath, Cfg
     Else
-        LongestSide = Shape.SizeHeight
-        ShortestSide = Shape.SizeWidth
+        ExportOnTemplatesSubset _
+            Deduplicate( _
+                GetRandomFilesFromFolder( _
+                    Cfg.ETemplatesFolder, Cfg.ImagesQuantity _
+                ) _
+            ), _
+            Cfg.ESize, ImageFile, ImageSize, SavePath, Cfg
     End If
-    Dim Ratio As Double: Ratio = LongestSide / ShortestSide
+End Sub
+
+Private Sub ExportOnTemplatesSubset( _
+                ByVal TemplateFiles As Collection, _
+                ByVal TemplateLongestSide As Double, _
+                ByVal ImageFile As String, _
+                ByVal ImageSize As Size, _
+                ByVal SavePath As String, _
+                ByVal Cfg As Config _
+            )
+    Dim File As Scripting.File
+    For Each File In TemplateFiles
+        SetOnTemplateAndExport _
+            FileSpec.New_(File.Path), TemplateLongestSide, _
+            ImageFile, ImageSize, SavePath, Cfg
+    Next File
+End Sub
+
+Private Sub SetOnTemplateAndExport( _
+                ByVal TemplateFile As FileSpec, _
+                ByVal TemplateLongestSide As Double, _
+                ByVal ImageFile As String, _
+                ByVal ImageSize As Size, _
+                ByVal SavePath As String, _
+                ByVal Cfg As Config _
+            )
+    OpenDocument TemplateFile
+    With ActiveDocument
+        .ReferencePoint = cdrCenter
+        .Unit = cdrCentimeter
+        Dim ImageSizeCm As Size: Set ImageSizeCm = _
+            ImageSize.ConvertUnits(Cfg.Unit, cdrCentimeter)
+        
+        .ActiveLayer.Import ImageFile
+        Dim Image As Shape: Set Image = ActiveShape
+        Dim Frame As Shape: Set Frame = GetFrames(1)
+                
+        Dim TempToImageRatio As Double: TempToImageRatio = _
+            TemplateLongestSide / ImageSizeCm.Longest
+          
+        ImageSize.ResizeToLongest( _
+            Size.NewFromShape(Frame).Longest / TempToImageRatio _
+        ).ApplyToShape Frame
+        
+        Image.SetSize Frame.SizeWidth, Frame.SizeHeight
+        Image.CenterX = Frame.CenterX
+        Image.CenterY = Frame.CenterY
+        Image.OrderFrontOf Frame
+                
+        Dim File As FileSpec: Set File = FileSpec.New_(TemplateFile)
+        File.Path = SavePath
+        
+        If Cfg.OptionJpeg Then
+            ExportTemplateAsJpeg File
+        ElseIf Cfg.OptionPng Then
+            ExportTemplateAsPng File
+        End If
+        .Close
+    End With
+End Sub
+
+Private Property Get GetFrames() As Collection
+    Set GetFrames = New Collection
+    Dim Shape As Shape
+    For Each Shape In ActivePage.Shapes
+        If Shape.Type = cdrRectangleShape Then
+            GetFrames.Add Shape
+        End If
+    Next Shape
+End Property
+
+Private Sub ExportTemplateAsPng(ByVal File As FileSpec)
+    File.Ext = "png"
+    With ActiveDocument
+        .ExportBitmap( _
+            File, cdrPNG, cdrCurrentPage, cdrRGBColorImage, , , _
+            .ResolutionX, .ResolutionX _
+        ).Finish
+    End With
+End Sub
+
+Private Sub ExportTemplateAsJpeg(ByVal File As FileSpec)
+    File.Ext = "jpg"
+    With ActiveDocument
+        With _
+            .ExportBitmap( _
+                File, cdrJPEG, cdrCurrentPage, cdrRGBColorImage, , , _
+                .ResolutionX, .ResolutionX _
+            )
+            .Compression = 10
+            .Optimized = True
+            .Finish
+        End With
+    End With
+End Sub
+
+Private Property Get RandomizeSize( _
+                ByVal Shape As Shape, _
+                ByVal Cfg As Config _
+            ) As Size
+    Dim ImageSize As Size: Set ImageSize = Size.NewFromRect(Shape.BoundingBox)
+    Dim Ratio As Double: Ratio = ImageSize.Longest / ImageSize.Shortest
+    
+    Dim LongestSide As Double, ShortestSide As Double
     LongestSide = RndDouble(Cfg.MinWidth, Cfg.MaxWidth)
     ShortestSide = LongestSide / Ratio
-    DisplayWidth = ToStr(VBA.Round(LongestSide, 1), ".")
-    DisplayHeight = ToStr(VBA.Round(ShortestSide, 1), ".")
-    If Not LongestFirst Then Swap DisplayWidth, DisplayHeight
-End Sub
+    
+    If ImageSize.Landscape Then
+        Set RandomizeSize = Size.New_(LongestSide, ShortestSide)
+    Else
+        Set RandomizeSize = Size.New_(ShortestSide, LongestSide)
+    End If
+End Property
 
 Private Property Get DisplayUnit(ByVal Cfg As Config) As String
     Select Case True
@@ -196,6 +319,16 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         .MaxWidth = Cfg.MaxWidth
         .OptionInches = Cfg.OptionInches
         .OptionCentimeters = Cfg.OptionCentimeters
+        .OptionImageOnRandomTemplate = Cfg.OptionImageOnRandomTemplate
+        .ImagesQuantity = Cfg.ImagesQuantity
+        .OptionPng = Cfg.OptionPng
+        .OptionJpeg = Cfg.OptionJpeg
+        .HTemplatesFolder = Cfg.HTemplatesFolder
+        .HWidth = Cfg.HWidth
+        .VTemplatesFolder = Cfg.VTemplatesFolder
+        .VHeight = Cfg.VHeight
+        .ETemplatesFolder = Cfg.ETemplatesFolder
+        .ESize = Cfg.ESize
         
         .Show vbModal
         
@@ -207,6 +340,16 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.MaxWidth = .MaxWidth
         Cfg.OptionInches = .OptionInches
         Cfg.OptionCentimeters = .OptionCentimeters
+        Cfg.OptionImageOnRandomTemplate = .OptionImageOnRandomTemplate
+        Cfg.ImagesQuantity = .ImagesQuantity
+        Cfg.OptionPng = .OptionPng
+        Cfg.OptionJpeg = .OptionJpeg
+        Cfg.HTemplatesFolder = .HTemplatesFolder
+        Cfg.HWidth = .HWidth
+        Cfg.VTemplatesFolder = .VTemplatesFolder
+        Cfg.VHeight = .VHeight
+        Cfg.ETemplatesFolder = .ETemplatesFolder
+        Cfg.ESize = .ESize
         
         ShowViewAndGetConfig = .IsOk
     End With
@@ -216,4 +359,5 @@ End Function
 ' # Tests
 
 Private Sub testSomething()
+    Size.New_(3, 3).ApplyToShape ActiveSelectionRange.FirstShape
 End Sub

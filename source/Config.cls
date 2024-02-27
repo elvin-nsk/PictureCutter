@@ -32,6 +32,25 @@ Public MaxWidth As Double
 Public OptionInches As Boolean
 Public OptionCentimeters As Boolean
 
+Public OptionImageOnRandomTemplate As Boolean
+Public ImagesQuantity As Long
+Public OptionPng As Boolean
+Public OptionJpeg As Boolean
+Public HTemplatesFolder As String
+Public HWidth As Double
+Public VTemplatesFolder As String
+Public VHeight As Double
+Public ETemplatesFolder As String
+Public ESize As Double
+
+
+Public Property Get Unit() As cdrUnit
+    Select Case True
+        Case OptionInches: Unit = cdrInch
+        Case OptionCentimeters: Unit = cdrCentimeter
+    End Select
+End Property
+
 '-------------------------------------------------------------------------------
 
 Private Sub Assign(ByVal Action As iniAction)
@@ -49,6 +68,17 @@ Private Sub Assign(ByVal Action As iniAction)
         .KeyVar "MaxWidth", MaxWidth, 20#
         .KeyVar "OptionInches", OptionInches, True
         .KeyVar "OptionCentimeters", OptionCentimeters, False
+        
+        .KeyVar "OptionImageOnRandomTemplate", OptionImageOnRandomTemplate, False
+        .KeyVar "ImagesQuantity", ImagesQuantity, 1
+        .KeyVar "OptionPng", OptionPng, True
+        .KeyVar "OptionJpeg", OptionJpeg, False
+        .KeyVar "HTemplatesFolder", HTemplatesFolder
+        .KeyVar "HWidth", HWidth, 140#
+        .KeyVar "VTemplatesFolder", VTemplatesFolder
+        .KeyVar "VHeight", VHeight, 140#
+        .KeyVar "ETemplatesFolder", ETemplatesFolder
+        .KeyVar "ESize", ESize, 140#
     
     End With
     
