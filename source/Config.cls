@@ -23,6 +23,9 @@ Private Const iniFileName As String = "elvin_" & APP_NAME & ".ini"
 
 '===============================================================================
 
+Public RawTemplatesFolder As String
+Public PreparedTemplatesFolder As String
+
 Public SourceFolder As String
 Public OutputFolder As String
 Public DivWidth As Long
@@ -43,7 +46,6 @@ Public VHeight As Double
 Public ETemplatesFolder As String
 Public ESize As Double
 
-
 Public Property Get Unit() As cdrUnit
     Select Case True
         Case OptionInches: Unit = cdrInch
@@ -60,6 +62,9 @@ Private Sub Assign(ByVal Action As iniAction)
         iniFilePrepare .Self, Action
         
         '.Section = "DEFAULT"
+        .KeyVar "RawTemplatesFolder", RawTemplatesFolder
+        .KeyVar "PreparedTemplatesFolder", PreparedTemplatesFolder
+        
         .KeyVar "SourceFolder", SourceFolder
         .KeyVar "OutputFolder", OutputFolder
         .KeyVar "DivWidth", DivWidth, 1

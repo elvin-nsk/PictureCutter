@@ -1,7 +1,7 @@
 Attribute VB_Name = "PictureCutter"
 '===============================================================================
 '   Макрос          : PictureCutter
-'   Версия          : 2024.02.27
+'   Версия          : 2024.03.06
 '   Сайты           : https://vk.com/elvin_macro
 '                     https://github.com/elvin-nsk
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
@@ -14,10 +14,36 @@ Option Explicit
 
 Public Const APP_NAME As String = "PictureCutter"
 Public Const APP_DISPLAYNAME As String = APP_NAME
-Public Const APP_VERSION As String = "2024.02.27"
+Public Const APP_VERSION As String = "2024.03.06"
+
+Public Const RECTANGLE_SIZE_PX As Long = 500
 
 '===============================================================================
 ' # Entry points
+
+Sub Prepare()
+
+    #If DebugMode = 0 Then
+    On Error GoTo Catch
+    Optimization = True
+    #End If
+    
+    Dim Cfg As New Config
+    If Not ShowPreprocessorViewAndGetConfig(Cfg) Then GoTo Finally
+    
+    PreprocessTemplates Cfg
+    
+Finally:
+    #If DebugMode = 0 Then
+    Optimization = False
+    #End If
+    Exit Sub
+
+Catch:
+    VBA.MsgBox VBA.Err.Source & ": " & VBA.Err.Description, vbCritical, "Error"
+    Resume Finally
+
+End Sub
 
 Sub Start()
 
@@ -151,6 +177,91 @@ Private Sub SaveSlice( _
     File.Ext = "png"
     Slice.Bitmap.SaveAs(File, cdrPNG).Finish
 End Sub
+
+'-------------------------------------------------------------------------------
+
+Public Sub PreprocessTemplates(ByVal Cfg As Config)
+    Dim RawTemplateFiles As Collection
+    Set RawTemplateFiles = GetValidImagesFromFolder(Cfg.RawTemplatesFolder)
+    If Not CheckImagesCount(RawTemplateFiles, Cfg.RawTemplatesFolder) Then _
+        Exit Sub
+    
+    Dim PBar As ProgressBar: Set PBar = _
+        ProgressBar.New_(ProgressBarNumeric, RawTemplateFiles.Count)
+    PBar.Cancelable = True
+    
+    Dim File As Variant
+    For Each File In RawTemplateFiles
+        PBar.Update
+        PrepareImageAndSave File, Cfg
+        If PBar.Canceled Then Exit Sub
+    Next File
+End Sub
+
+Private Sub PrepareImageAndSave( _
+                ByVal TemplateFile As String, ByVal Cfg As Config _
+            )
+    CreateDocument
+    Dim Template As Shape
+    Dim Frame As Shape
+    Dim RectangleSize As Double: RectangleSize _
+        = PixelsToDocUnits(RECTANGLE_SIZE_PX)
+    With ActiveDocument
+        .ColorContext.BlendingColorModel = clrColorModelRGB
+        .ActiveLayer.Import TemplateFile
+        Set Template = ActiveShape
+        ResizeImageToDocumentResolution Template
+        Template.CenterX = .ActivePage.CenterX
+        Template.CenterY = .ActivePage.CenterY
+        Set Frame = _
+            .ActiveLayer.CreateRectangle2( _
+                0, 0, RectangleSize, RectangleSize _
+            )
+        Frame.CenterX = .ActivePage.CenterX
+        Frame.CenterY = .ActivePage.CenterY
+        Frame.OrderFrontOf Template
+        Frame.Fill.ApplyUniformFill CreateRGBColor(255, 255, 255)
+        Frame.Outline.SetNoOutline
+        Frame.CreateDropShadow _
+            cdrDropShadowFlat, 50, 15, 0, 0, CreateRGBColor(0, 0, 0), _
+            MergeMode:=cdrMergeMultiply
+        
+        Dim ExportFile As FileSpec: Set ExportFile = _
+            FileSpec.New_(TemplateFile)
+        ExportFile.Path = Cfg.PreparedTemplatesFolder
+        ExportFile.Ext = "cdr"
+        .SaveAs ExportFile
+        .Close
+    End With
+End Sub
+
+Private Function CheckImagesCount( _
+                     ByVal Images As Collection, _
+                     ByVal Folder As String _
+                 ) As Boolean
+    If Images.Count = 0 Then
+        VBA.MsgBox "Не найдены изображения в папке " & Folder, vbCritical
+    Else
+        CheckImagesCount = True
+    End If
+End Function
+
+Private Property Get GetValidImagesFromFolder( _
+                         ByVal Folder As String _
+                     ) As Collection
+    With FSO
+        Dim ValidFiles As New Collection
+        Dim File As File
+        For Each File In .GetFolder(Folder).Files
+            If CheckFile(File.Name) Then
+                ValidFiles.Add File
+            End If
+        Next File
+    End With
+    Set GetValidImagesFromFolder = ValidFiles
+End Property
+
+'-------------------------------------------------------------------------------
 
 Private Sub ExportOnTemplates( _
                 ByVal ImageFile As String, _
@@ -352,6 +463,20 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.ESize = .ESize
         
         ShowViewAndGetConfig = .IsOk
+    End With
+End Function
+
+Private Function ShowPreprocessorViewAndGetConfig(ByVal Cfg As Config) As Boolean
+    With New PreprocessorView
+        .RawTemplatesFolder = Cfg.RawTemplatesFolder
+        .PreparedTemplatesFolder = Cfg.PreparedTemplatesFolder
+        
+        .Show vbModal
+        
+        Cfg.RawTemplatesFolder = .RawTemplatesFolder
+        Cfg.PreparedTemplatesFolder = .PreparedTemplatesFolder
+        
+        ShowPreprocessorViewAndGetConfig = .IsOk
     End With
 End Function
 
