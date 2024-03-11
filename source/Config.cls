@@ -30,8 +30,8 @@ Public SourceFolder As String
 Public OutputFolder As String
 Public DivWidth As Long
 Public DivHeight As Long
-Public MinWidth As Double
-Public MaxWidth As Double
+Public LongestSide As Double
+Public SizeDelta As Double
 Public OptionInches As Boolean
 Public OptionCentimeters As Boolean
 
@@ -40,11 +40,8 @@ Public ImagesQuantity As Long
 Public OptionPng As Boolean
 Public OptionJpeg As Boolean
 Public HTemplatesFolder As String
-Public HWidth As Double
 Public VTemplatesFolder As String
-Public VHeight As Double
 Public ETemplatesFolder As String
-Public ESize As Double
 
 Public Property Get Unit() As cdrUnit
     Select Case True
@@ -69,8 +66,8 @@ Private Sub Assign(ByVal Action As iniAction)
         .KeyVar "OutputFolder", OutputFolder
         .KeyVar "DivWidth", DivWidth, 1
         .KeyVar "DivHeight", DivHeight, 1
-        .KeyVar "MinWidth", MinWidth, 10#
-        .KeyVar "MaxWidth", MaxWidth, 20#
+        .KeyVar "SizeDelta", SizeDelta, 10#
+        .KeyVar "LongestSide", LongestSide, 20#
         .KeyVar "OptionInches", OptionInches, True
         .KeyVar "OptionCentimeters", OptionCentimeters, False
         
@@ -79,11 +76,8 @@ Private Sub Assign(ByVal Action As iniAction)
         .KeyVar "OptionPng", OptionPng, True
         .KeyVar "OptionJpeg", OptionJpeg, False
         .KeyVar "HTemplatesFolder", HTemplatesFolder
-        .KeyVar "HWidth", HWidth, 140#
         .KeyVar "VTemplatesFolder", VTemplatesFolder
-        .KeyVar "VHeight", VHeight, 140#
         .KeyVar "ETemplatesFolder", ETemplatesFolder
-        .KeyVar "ESize", ESize, 140#
     
     End With
     

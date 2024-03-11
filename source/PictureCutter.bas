@@ -1,7 +1,7 @@
 Attribute VB_Name = "PictureCutter"
 '===============================================================================
 '   Макрос          : PictureCutter
-'   Версия          : 2024.03.06
+'   Версия          : 2024.03.11
 '   Сайты           : https://vk.com/elvin_macro
 '                     https://github.com/elvin-nsk
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
@@ -14,7 +14,7 @@ Option Explicit
 
 Public Const APP_NAME As String = "PictureCutter"
 Public Const APP_DISPLAYNAME As String = APP_NAME
-Public Const APP_VERSION As String = "2024.03.06"
+Public Const APP_VERSION As String = "2024.03.11"
 
 Public Const RECTANGLE_SIZE_PX As Long = 500
 
@@ -276,7 +276,7 @@ Private Sub ExportOnTemplates( _
                     Cfg.HTemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.HWidth, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
     ElseIf ImageSize.Portrait Then
         ExportOnTemplatesSubset _
             Deduplicate( _
@@ -284,7 +284,7 @@ Private Sub ExportOnTemplates( _
                     Cfg.VTemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.VHeight, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
     Else
         ExportOnTemplatesSubset _
             Deduplicate( _
@@ -292,7 +292,7 @@ Private Sub ExportOnTemplates( _
                     Cfg.ETemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.ESize, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
     End If
 End Sub
 
@@ -323,16 +323,13 @@ Private Sub SetOnTemplateAndExport( _
     OpenDocument TemplateFile
     With ActiveDocument
         .ReferencePoint = cdrCenter
-        .Unit = cdrCentimeter
-        Dim ImageSizeCm As Size: Set ImageSizeCm = _
-            ImageSize.ConvertUnits(Cfg.Unit, cdrCentimeter)
         
         .ActiveLayer.Import ImageFile
         Dim Image As Shape: Set Image = ActiveShape
         Dim Frame As Shape: Set Frame = GetFrames(1)
                 
         Dim TempToImageRatio As Double: TempToImageRatio = _
-            TemplateLongestSide / ImageSizeCm.Longest
+            TemplateLongestSide / ImageSize.Longest
           
         ImageSize.ResizeToLongest( _
             Size.NewFromShape(Frame).Longest / TempToImageRatio _
@@ -398,7 +395,7 @@ Private Property Get RandomizeSize( _
     Dim Ratio As Double: Ratio = ImageSize.Longest / ImageSize.Shortest
     
     Dim LongestSide As Double, ShortestSide As Double
-    LongestSide = RndDouble(Cfg.MinWidth, Cfg.MaxWidth)
+    LongestSide = RndDouble(Cfg.LongestSide - Cfg.SizeDelta, Cfg.LongestSide)
     ShortestSide = LongestSide / Ratio
     
     If ImageSize.Landscape Then
@@ -426,8 +423,8 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         .OutputFolder = Cfg.OutputFolder
         .DivWidth = Cfg.DivWidth
         .DivHeight = Cfg.DivHeight
-        .MinWidth = Cfg.MinWidth
-        .MaxWidth = Cfg.MaxWidth
+        .SizeDelta = Cfg.SizeDelta
+        .LongestSide = Cfg.LongestSide
         .OptionInches = Cfg.OptionInches
         .OptionCentimeters = Cfg.OptionCentimeters
         .OptionImageOnRandomTemplate = Cfg.OptionImageOnRandomTemplate
@@ -435,11 +432,8 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         .OptionPng = Cfg.OptionPng
         .OptionJpeg = Cfg.OptionJpeg
         .HTemplatesFolder = Cfg.HTemplatesFolder
-        .HWidth = Cfg.HWidth
         .VTemplatesFolder = Cfg.VTemplatesFolder
-        .VHeight = Cfg.VHeight
         .ETemplatesFolder = Cfg.ETemplatesFolder
-        .ESize = Cfg.ESize
         
         .Show vbModal
         
@@ -447,8 +441,8 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.OutputFolder = .OutputFolder
         Cfg.DivWidth = .DivWidth
         Cfg.DivHeight = .DivHeight
-        Cfg.MinWidth = .MinWidth
-        Cfg.MaxWidth = .MaxWidth
+        Cfg.SizeDelta = .SizeDelta
+        Cfg.LongestSide = .LongestSide
         Cfg.OptionInches = .OptionInches
         Cfg.OptionCentimeters = .OptionCentimeters
         Cfg.OptionImageOnRandomTemplate = .OptionImageOnRandomTemplate
@@ -456,11 +450,8 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.OptionPng = .OptionPng
         Cfg.OptionJpeg = .OptionJpeg
         Cfg.HTemplatesFolder = .HTemplatesFolder
-        Cfg.HWidth = .HWidth
         Cfg.VTemplatesFolder = .VTemplatesFolder
-        Cfg.VHeight = .VHeight
         Cfg.ETemplatesFolder = .ETemplatesFolder
-        Cfg.ESize = .ESize
         
         ShowViewAndGetConfig = .IsOk
     End With
