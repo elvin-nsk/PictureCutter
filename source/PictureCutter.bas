@@ -1,7 +1,7 @@
 Attribute VB_Name = "PictureCutter"
 '===============================================================================
 '   Макрос          : PictureCutter
-'   Версия          : 2024.03.11
+'   Версия          : 2024.03.12
 '   Сайты           : https://vk.com/elvin_macro
 '                     https://github.com/elvin-nsk
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
@@ -14,7 +14,7 @@ Option Explicit
 
 Public Const APP_NAME As String = "PictureCutter"
 Public Const APP_DISPLAYNAME As String = APP_NAME
-Public Const APP_VERSION As String = "2024.03.11"
+Public Const APP_VERSION As String = "2024.03.12"
 
 Public Const RECTANGLE_SIZE_PX As Long = 500
 
@@ -276,7 +276,7 @@ Private Sub ExportOnTemplates( _
                     Cfg.HTemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.ShortestSide, ImageFile, ImageSize, SavePath, Cfg
     ElseIf ImageSize.Portrait Then
         ExportOnTemplatesSubset _
             Deduplicate( _
@@ -284,7 +284,7 @@ Private Sub ExportOnTemplates( _
                     Cfg.VTemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.ShortestSide, ImageFile, ImageSize, SavePath, Cfg
     Else
         ExportOnTemplatesSubset _
             Deduplicate( _
@@ -292,13 +292,13 @@ Private Sub ExportOnTemplates( _
                     Cfg.ETemplatesFolder, Cfg.ImagesQuantity _
                 ) _
             ), _
-            Cfg.LongestSide, ImageFile, ImageSize, SavePath, Cfg
+            Cfg.ShortestSide, ImageFile, ImageSize, SavePath, Cfg
     End If
 End Sub
 
 Private Sub ExportOnTemplatesSubset( _
                 ByVal TemplateFiles As Collection, _
-                ByVal TemplateLongestSide As Double, _
+                ByVal TemplateShortestSide As Double, _
                 ByVal ImageFile As String, _
                 ByVal ImageSize As Size, _
                 ByVal SavePath As String, _
@@ -307,14 +307,14 @@ Private Sub ExportOnTemplatesSubset( _
     Dim File As Scripting.File
     For Each File In TemplateFiles
         SetOnTemplateAndExport _
-            FileSpec.New_(File.Path), TemplateLongestSide, _
+            FileSpec.New_(File.Path), TemplateShortestSide, _
             ImageFile, ImageSize, SavePath, Cfg
     Next File
 End Sub
 
 Private Sub SetOnTemplateAndExport( _
                 ByVal TemplateFile As FileSpec, _
-                ByVal TemplateLongestSide As Double, _
+                ByVal TemplateShortestSide As Double, _
                 ByVal ImageFile As String, _
                 ByVal ImageSize As Size, _
                 ByVal SavePath As String, _
@@ -329,10 +329,10 @@ Private Sub SetOnTemplateAndExport( _
         Dim Frame As Shape: Set Frame = GetFrames(1)
                 
         Dim TempToImageRatio As Double: TempToImageRatio = _
-            TemplateLongestSide / ImageSize.Longest
+            TemplateShortestSide / ImageSize.Shortest
           
-        ImageSize.ResizeToLongest( _
-            Size.NewFromShape(Frame).Longest / TempToImageRatio _
+        ImageSize.ResizeToShortest( _
+            Size.NewFromShape(Frame).Shortest / TempToImageRatio _
         ).ApplyToShape Frame
         
         Image.SetSize Frame.SizeWidth, Frame.SizeHeight
@@ -395,8 +395,8 @@ Private Property Get RandomizeSize( _
     Dim Ratio As Double: Ratio = ImageSize.Longest / ImageSize.Shortest
     
     Dim LongestSide As Double, ShortestSide As Double
-    LongestSide = RndDouble(Cfg.LongestSide - Cfg.SizeDelta, Cfg.LongestSide)
-    ShortestSide = LongestSide / Ratio
+    ShortestSide = RndDouble(Cfg.ShortestSide - Cfg.SizeDelta, Cfg.ShortestSide)
+    LongestSide = ShortestSide * Ratio
     
     If ImageSize.Landscape Then
         Set RandomizeSize = Size.New_(LongestSide, ShortestSide)
@@ -424,7 +424,7 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         .DivWidth = Cfg.DivWidth
         .DivHeight = Cfg.DivHeight
         .SizeDelta = Cfg.SizeDelta
-        .LongestSide = Cfg.LongestSide
+        .ShortestSide = Cfg.ShortestSide
         .OptionInches = Cfg.OptionInches
         .OptionCentimeters = Cfg.OptionCentimeters
         .OptionImageOnRandomTemplate = Cfg.OptionImageOnRandomTemplate
@@ -442,7 +442,7 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.DivWidth = .DivWidth
         Cfg.DivHeight = .DivHeight
         Cfg.SizeDelta = .SizeDelta
-        Cfg.LongestSide = .LongestSide
+        Cfg.ShortestSide = .ShortestSide
         Cfg.OptionInches = .OptionInches
         Cfg.OptionCentimeters = .OptionCentimeters
         Cfg.OptionImageOnRandomTemplate = .OptionImageOnRandomTemplate

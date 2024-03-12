@@ -30,7 +30,7 @@ Public SourceFolder As String
 Public OutputFolder As String
 Public DivWidth As Long
 Public DivHeight As Long
-Public LongestSide As Double
+Public ShortestSide As Double
 Public SizeDelta As Double
 Public OptionInches As Boolean
 Public OptionCentimeters As Boolean
@@ -67,7 +67,7 @@ Private Sub Assign(ByVal Action As iniAction)
         .KeyVar "DivWidth", DivWidth, 1
         .KeyVar "DivHeight", DivHeight, 1
         .KeyVar "SizeDelta", SizeDelta, 10#
-        .KeyVar "LongestSide", LongestSide, 20#
+        .KeyVar "ShortestSide", ShortestSide, 20#
         .KeyVar "OptionInches", OptionInches, True
         .KeyVar "OptionCentimeters", OptionCentimeters, False
         

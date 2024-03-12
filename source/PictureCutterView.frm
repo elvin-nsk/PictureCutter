@@ -26,7 +26,7 @@ Public SourceFolder As FolderBrowserHandler
 Public OutputFolder As FolderBrowserHandler
 Public DivWidth As TextBoxHandler
 Public DivHeight As TextBoxHandler
-Public LongestSide As TextBoxHandler
+Public ShortestSide As TextBoxHandler
 Public SizeDelta As TextBoxHandler
 
 Public ImagesQuantity As TextBoxHandler
@@ -49,9 +49,9 @@ Private Sub UserForm_Initialize()
     Set DivHeight = _
         TextBoxHandler.New_(DivHeightBox, TextBoxTypeLong, 1)
     Set SizeDelta = _
-        TextBoxHandler.New_(SizeDeltaBox, TextBoxTypeDouble, MIN_SIZE)
-    Set LongestSide = _
-        TextBoxHandler.New_(LongestSideBox, TextBoxTypeDouble, MIN_SIZE)
+        TextBoxHandler.New_(SizeDeltaBox, TextBoxTypeDouble, 0)
+    Set ShortestSide = _
+        TextBoxHandler.New_(ShortestSideBox, TextBoxTypeDouble, MIN_SIZE)
         
     Set ImagesQuantity = _
         TextBoxHandler.New_(ImagesQuantityBox, TextBoxTypeLong, 1)
