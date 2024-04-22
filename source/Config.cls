@@ -39,6 +39,9 @@ Public OptionImageOnRandomTemplate As Boolean
 Public ImagesQuantity As Long
 Public OptionPng As Boolean
 Public OptionJpeg As Boolean
+Public OptionResolutionSource As Boolean
+Public OptionResolutionCustom As Boolean
+Public Resolution As Long
 Public HTemplatesFolder As String
 Public VTemplatesFolder As String
 Public ETemplatesFolder As String
@@ -75,6 +78,9 @@ Private Sub Assign(ByVal Action As iniAction)
         .KeyVar "ImagesQuantity", ImagesQuantity, 1
         .KeyVar "OptionPng", OptionPng, True
         .KeyVar "OptionJpeg", OptionJpeg, False
+        .KeyVar "OptionResolutionSource", OptionResolutionSource, True
+        .KeyVar "OptionResolutionCustom", OptionResolutionCustom, False
+        .KeyVar "Resolution", Resolution, 300
         .KeyVar "HTemplatesFolder", HTemplatesFolder
         .KeyVar "VTemplatesFolder", VTemplatesFolder
         .KeyVar "ETemplatesFolder", ETemplatesFolder

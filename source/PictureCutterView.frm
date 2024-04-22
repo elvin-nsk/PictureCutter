@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} PictureCutterView 
-   ClientHeight    =   7560
+   ClientHeight    =   8145
    ClientLeft      =   45
    ClientTop       =   390
    ClientWidth     =   6975
@@ -39,6 +39,13 @@ Public ETemplatesFolder As FolderBrowserHandler
 
 Private Sub UserForm_Initialize()
     Caption = APP_DISPLAYNAME & " (v" & APP_VERSION & ")"
+    
+    With ComboBoxResolution
+        .AddItem 72
+        .AddItem 96
+        .AddItem 150
+        .AddItem 300
+    End With
     
     Set SourceFolder = _
         FolderBrowserHandler.New_(SourceFolderBox, SourceFolderBrowse)

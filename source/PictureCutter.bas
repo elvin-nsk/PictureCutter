@@ -1,7 +1,7 @@
 Attribute VB_Name = "PictureCutter"
 '===============================================================================
 '   Макрос          : PictureCutter
-'   Версия          : 2024.03.12
+'   Версия          : 2024.04.22
 '   Сайты           : https://vk.com/elvin_macro
 '                     https://github.com/elvin-nsk
 '   Автор           : elvin-nsk (me@elvin.nsk.ru)
@@ -14,9 +14,10 @@ Option Explicit
 
 Public Const APP_NAME As String = "PictureCutter"
 Public Const APP_DISPLAYNAME As String = APP_NAME
-Public Const APP_VERSION As String = "2024.03.12"
+Public Const APP_VERSION As String = "2024.04.22"
 
 Public Const RECTANGLE_SIZE_PX As Long = 500
+Public Const IMAGE_SIZE_MULT As Long = 1.01
 
 '===============================================================================
 ' # Entry points
@@ -83,8 +84,8 @@ Private Sub ProcessImages(ByVal Cfg As Config)
     PBar.Cancelable = True
     For Each File In Files
         If CheckFile(File.Path) Then
-            ProcessImage File.Path, Cfg
             PBar.Update
+            ProcessImage File.Path, Cfg
             If PBar.Canceled Then Exit Sub
         End If
     Next File
@@ -331,11 +332,16 @@ Private Sub SetOnTemplateAndExport( _
         Dim TempToImageRatio As Double: TempToImageRatio = _
             TemplateShortestSide / ImageSize.Shortest
           
-        ImageSize.ResizeToShortest( _
-            Size.NewFromShape(Frame).Shortest / TempToImageRatio _
-        ).ApplyToShape Frame
+        Set ImageSize = _
+            ImageSize.ResizeToShortest( _
+                Size.NewFromShape(Frame).Shortest / TempToImageRatio _
+            )
+        ImageSize.ApplyToShape Frame
         
-        Image.SetSize Frame.SizeWidth, Frame.SizeHeight
+        'чтобы не вылезал Frame
+        Set ImageSize = ImageSize.Mult(IMAGE_SIZE_MULT)
+        
+        Image.SetSize ImageSize.Width, ImageSize.Height
         Image.CenterX = Frame.CenterX
         Image.CenterY = Frame.CenterY
         Image.OrderFrontOf Frame
@@ -343,10 +349,17 @@ Private Sub SetOnTemplateAndExport( _
         Dim File As FileSpec: Set File = FileSpec.New_(TemplateFile)
         File.Path = SavePath
         
+        Dim Resolution As Long
+        If Cfg.OptionResolutionSource Then
+            Resolution = .ResolutionX
+        Else
+            Resolution = Cfg.Resolution
+        End If
+        
         If Cfg.OptionJpeg Then
-            ExportTemplateAsJpeg File
+            ExportTemplateAsJpeg File, Resolution
         ElseIf Cfg.OptionPng Then
-            ExportTemplateAsPng File
+            ExportTemplateAsPng File, Resolution
         End If
         .Close
     End With
@@ -362,23 +375,29 @@ Private Property Get GetFrames() As Collection
     Next Shape
 End Property
 
-Private Sub ExportTemplateAsPng(ByVal File As FileSpec)
+Private Sub ExportTemplateAsPng( _
+                ByVal File As FileSpec, _
+                ByVal Resolution As Long _
+            )
     File.Ext = "png"
     With ActiveDocument
         .ExportBitmap( _
             File, cdrPNG, cdrCurrentPage, cdrRGBColorImage, , , _
-            .ResolutionX, .ResolutionX _
+            Resolution, Resolution _
         ).Finish
     End With
 End Sub
 
-Private Sub ExportTemplateAsJpeg(ByVal File As FileSpec)
+Private Sub ExportTemplateAsJpeg( _
+                ByVal File As FileSpec, _
+                ByVal Resolution As Long _
+            )
     File.Ext = "jpg"
     With ActiveDocument
         With _
             .ExportBitmap( _
                 File, cdrJPEG, cdrCurrentPage, cdrRGBColorImage, , , _
-                .ResolutionX, .ResolutionX _
+                Resolution, Resolution _
             )
             .Compression = 10
             .Optimized = True
@@ -431,6 +450,9 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         .ImagesQuantity = Cfg.ImagesQuantity
         .OptionPng = Cfg.OptionPng
         .OptionJpeg = Cfg.OptionJpeg
+        .OptionResolutionSource = Cfg.OptionResolutionSource
+        .OptionResolutionCustom = Cfg.OptionResolutionCustom
+        .ComboBoxResolution = Cfg.Resolution
         .HTemplatesFolder = Cfg.HTemplatesFolder
         .VTemplatesFolder = Cfg.VTemplatesFolder
         .ETemplatesFolder = Cfg.ETemplatesFolder
@@ -449,6 +471,9 @@ Private Function ShowViewAndGetConfig(ByVal Cfg As Config) As Boolean
         Cfg.ImagesQuantity = .ImagesQuantity
         Cfg.OptionPng = .OptionPng
         Cfg.OptionJpeg = .OptionJpeg
+        Cfg.OptionResolutionSource = .OptionResolutionSource
+        Cfg.OptionResolutionCustom = .OptionResolutionCustom
+        Cfg.Resolution = .ComboBoxResolution
         Cfg.HTemplatesFolder = .HTemplatesFolder
         Cfg.VTemplatesFolder = .VTemplatesFolder
         Cfg.ETemplatesFolder = .ETemplatesFolder
